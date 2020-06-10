@@ -312,7 +312,8 @@ public class LWJGL_SWT_Demo {
 		return openAdjustFrequencyDialog;
 	}
 	
-	/** Runs a simple OpenGL demo program.
+	/** Runs a simple OpenGL demo program with a solid color background that
+	 * changes slightly each frame, resulting in a "rainbow" effect.
 	 * 
 	 * @param args Program command line arguments */
 	public static final void runDemo(String[] args) {
