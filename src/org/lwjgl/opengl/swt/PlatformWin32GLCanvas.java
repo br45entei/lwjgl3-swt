@@ -264,7 +264,7 @@ class PlatformWin32GLCanvas extends AbstractPlatformGLCanvas {
                     WGL.wglDeleteContext(context);
                     throw new SWTException("Swap interval requested but WGL_EXT_swap_control is unavailable");
                 }
-                if (attribs.swapInterval < 0) {
+                if (attribs.swapInterval.intValue() < 0) {
                     // Only allowed if WGL_EXT_swap_control_tear is available
                     boolean has_WGL_EXT_swap_control_tear = wglExtensionsList.contains("WGL_EXT_swap_control_tear");
                     if (!has_WGL_EXT_swap_control_tear) {
@@ -284,7 +284,7 @@ class PlatformWin32GLCanvas extends AbstractPlatformGLCanvas {
                 }
                 long wglSwapIntervalEXTAddr = WGL.wglGetProcAddress("wglSwapIntervalEXT");
                 if (wglSwapIntervalEXTAddr != 0L) {
-                    JNI.callI(attribs.swapInterval, wglSwapIntervalEXTAddr);
+                    JNI.callI(attribs.swapInterval.intValue(), wglSwapIntervalEXTAddr);
                 }
             }
 
@@ -612,7 +612,7 @@ class PlatformWin32GLCanvas extends AbstractPlatformGLCanvas {
                 WGL.wglDeleteContext(newCtx);
                 throw new SWTException("Swap interval requested but WGL_EXT_swap_control is unavailable");
             }
-            if (attribs.swapInterval < 0) {
+            if (attribs.swapInterval.intValue() < 0) {
                 // Only allowed if WGL_EXT_swap_control_tear is available
                 boolean has_WGL_EXT_swap_control_tear = wglExtensionsList.contains("WGL_EXT_swap_control_tear");
                 if (!has_WGL_EXT_swap_control_tear) {
@@ -624,7 +624,7 @@ class PlatformWin32GLCanvas extends AbstractPlatformGLCanvas {
             }
             long wglSwapIntervalEXTAddr = WGL.wglGetProcAddress("wglSwapIntervalEXT");
             if (wglSwapIntervalEXTAddr != 0L) {
-                JNI.callI(attribs.swapInterval, wglSwapIntervalEXTAddr);
+                JNI.callI(attribs.swapInterval.intValue(), wglSwapIntervalEXTAddr);
             }
         }
         if (attribs.swapGroupNV > 0 || attribs.swapBarrierNV > 0) {
