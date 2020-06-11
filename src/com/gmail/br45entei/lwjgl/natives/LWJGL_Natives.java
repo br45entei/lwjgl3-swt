@@ -18,6 +18,8 @@
  *******************************************************************************/
 package com.gmail.br45entei.lwjgl.natives;
 
+import com.gmail.br45entei.util.CodeUtil;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -29,15 +31,18 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import sun.security.action.GetPropertyAction;
-
 /** Class used to load system libraries for LWJGL upon startup.
  * 
  * @author Brian_Entei */
 public class LWJGL_Natives {
 	
+	/** Returns the folder where native library files are unpacked.<br>
+	 * It is a sub-folder named &quot;natives&quot; in the program's current
+	 * working directory.
+	 * 
+	 * @return The folder where native library files are unpacked */
 	public static final File getNativesFolder() {
-		final File rootDir = new File(AccessController.doPrivileged(new GetPropertyAction("user.dir")));
+		final File rootDir = new File(CodeUtil.getProperty("user.dir"));//new File(AccessController.doPrivileged(new GetPropertyAction("user.dir")));
 		File folder = new File(rootDir, "natives");
 		
 		switch(Platform.get()) {
@@ -50,6 +55,7 @@ public class LWJGL_Natives {
 		case MACOSX:
 			folder = new File(folder, "macos");
 			break;
+		case UNKNOWN:
 		default:
 			throw new AssertionError("No native libraries are available for this platform!");
 		}
@@ -153,6 +159,14 @@ public class LWJGL_Natives {
 		
 	}
 	
+	/** Loads the native libraries required by LWJGL3-3.2.3 along with any other
+	 * native libraries passed to this function via
+	 * <code>extraNativeResourcePathsToLoad</code>.
+	 * 
+	 * @param extraNativeResourcePathsToLoad A collection of resource path
+	 *            strings pointing to the extra native libraries to be loaded
+	 * @return A list of the files that were created and then loaded as a
+	 *         result */
 	public static final List<File> loadNatives(Collection<String> extraNativeResourcePathsToLoad) {
 		final File folder = LWJGL_Natives.getNativesFolder();
 		
@@ -175,6 +189,7 @@ public class LWJGL_Natives {
 					case X86:
 						pathRoot = pathRoot.concat("x86/org/lwjgl/");
 						break;
+					//$CASES-OMITTED$
 					default:
 						throw new AssertionError("No native libraries are available for this platform!");
 					}
@@ -199,6 +214,7 @@ public class LWJGL_Natives {
 					case ARM64:
 						pathRoot = pathRoot.concat("arm32/org/lwjgl/");
 						break;
+					//$CASES-OMITTED$
 					default:
 						throw new AssertionError("No native libraries are available for this platform!");
 					}
@@ -218,6 +234,7 @@ public class LWJGL_Natives {
 					case X64:
 						pathRoot = pathRoot.concat("x64/org/lwjgl/");
 						break;
+					//$CASES-OMITTED$
 					default:
 						throw new AssertionError("No native libraries are available for this platform!");
 					}
@@ -231,6 +248,7 @@ public class LWJGL_Natives {
 					paths.add(pathRoot.concat("glfw/libglfw.dylib"));
 					paths.add(pathRoot.concat("vulkan/libMoltenVK.dylib"));
 					break;
+				case UNKNOWN:
 				default:
 					throw new AssertionError("No native libraries are available for this platform!");
 				}
@@ -241,8 +259,13 @@ public class LWJGL_Natives {
 				
 				if(extraNativeResourcePathsToLoad != null) {
 					for(String resourcePath : extraNativeResourcePathsToLoad) {
-						System.out.print("Extra native library path: " + resourcePath + "; Is present: ");
-						boolean inputStreamPresent = LWJGL_Natives.class.getResourceAsStream(resourcePath) != null;
+						System.out.print(String.format("Extra native library path: \"%s\"; Is present: ", resourcePath));
+						boolean inputStreamPresent;
+						try(InputStream check = LWJGL_Natives.class.getResourceAsStream(resourcePath)) {
+							inputStreamPresent = check != null;
+						} catch(IOException | NullPointerException ex) {
+							inputStreamPresent = false;
+						}
 						if(inputStreamPresent && resourcePath.contains("/")) {
 							paths.add(resourcePath);
 							System.out.println("Yes");
@@ -295,6 +318,14 @@ public class LWJGL_Natives {
 		return loadedNatives;
 	}
 	
+	/** Loads the native libraries required by LWJGL3-3.2.3 along with any other
+	 * native libraries passed to this function via
+	 * <code>extraNativeResourcePathsToLoad</code>.
+	 * 
+	 * @param extraNativeResourcePathsToLoad One or more resource path strings
+	 *            pointing to the extra native libraries to be loaded
+	 * @return A list of the files that were created and then loaded as a
+	 *         result */
 	public static final List<File> loadNatives(String... extraNativeResourcePathsToLoad) {
 		return loadNatives(Arrays.asList(extraNativeResourcePathsToLoad));
 	}

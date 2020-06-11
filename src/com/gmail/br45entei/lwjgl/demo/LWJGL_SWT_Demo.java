@@ -59,6 +59,7 @@ import org.lwjgl.opengl.swt.GLData;
  * @author Brian_Entei */
 public class LWJGL_SWT_Demo {
 	
+	@SuppressWarnings("unused")
 	private static final SelectionListener createMenuBar(Shell shell, Function<Void, Boolean> swtLoop, Function<Boolean, Void> setFullScreen, boolean[] state, boolean[] vsync, double[] frequency, MenuItem[] verticalSyncMenuItem, MenuItem[] framerateMenuItem, MenuItem[] fullscreenMenuItem) {
 		Menu menu = new Menu(shell, SWT.BAR);
 		shell.setMenuBar(menu);
@@ -453,6 +454,7 @@ public class LWJGL_SWT_Demo {
 			//return glCanvas.toDisplay(halfSize);
 			return display.map(glCanvas, null, halfSize);
 		};
+		@SuppressWarnings("unchecked")
 		final Function<Boolean, Void>[] setFullScreen = new Function[1];
 		setFullScreen[0] = (b) -> {
 			if(b == null ? shell.getFullScreen() : !b.booleanValue()) {
@@ -593,6 +595,7 @@ public class LWJGL_SWT_Demo {
 				//Set the OpenGL context current on the current thread:
 				glCanvas.setCurrent();
 				//Initialize the OpenGL library and get the capabilities:
+				@SuppressWarnings("unused")
 				GLCapabilities glCaps = GL.createCapabilities(true);
 				
 				System.out.println(String.format("GL Renderer: %s", GL11.glGetString(GL11.GL_RENDERER)));
