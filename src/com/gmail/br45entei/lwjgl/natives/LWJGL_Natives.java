@@ -19,7 +19,6 @@
 package com.gmail.br45entei.lwjgl.natives;
 
 import com.gmail.br45entei.util.Architecture;
-import com.gmail.br45entei.util.CodeUtil;
 import com.gmail.br45entei.util.Platform;
 
 import java.io.File;
@@ -44,7 +43,12 @@ public class LWJGL_Natives {
 	 * 
 	 * @return The folder where native library files are unpacked */
 	public static final File getNativesFolder() {
-		final File rootDir = new File(CodeUtil.getProperty("user.dir"));//new File(AccessController.doPrivileged(new GetPropertyAction("user.dir")));
+		final File rootDir = new File(AccessController.doPrivileged(new PrivilegedAction<String>() {
+			@Override
+			public String run() {
+				return System.getProperty("user.dir");
+			}
+		}));//new File(AccessController.doPrivileged(new GetPropertyAction("user.dir")));
 		File folder = new File(rootDir, "natives");
 		
 		switch(Platform.get()) {
@@ -87,6 +91,7 @@ public class LWJGL_Natives {
 		AccessController.doPrivileged(new PrivilegedAction<Void>() {
 			@Override
 			public Void run() {
+				
 				File folder = LWJGL_Natives.getNativesFolder();
 				//System.setProperty("org.lwjgl.util.Debug", "true");
 				//System.setProperty("org.lwjgl.util.DebugLoader", "true");
@@ -118,6 +123,10 @@ public class LWJGL_Natives {
 				List<String> paths = new ArrayList<>();
 				switch(Platform.get()) {
 				case WINDOWS:
+					System.setProperty("sun.java2d.d3d", "true");
+					System.setProperty("sun.java2d.translaccel", "true");
+					System.setProperty("sun.java2d.ddforcevram", "true");
+					
 					pathRoot = pathRoot.concat("windows/");
 					
 					switch(Architecture.get()) {

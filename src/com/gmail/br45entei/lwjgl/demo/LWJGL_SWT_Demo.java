@@ -1,9 +1,6 @@
 package com.gmail.br45entei.lwjgl.demo;
 
-import com.gmail.br45entei.util.CodeUtil;
-import com.gmail.br45entei.util.FrequencyTimer;
-import com.gmail.br45entei.util.FrequencyTimer.TimerCallback;
-import com.gmail.br45entei.util.SWTUtil;
+import com.gmail.br45entei.lwjgl.demo.LWJGL_SWT_Demo.FrequencyTimer.TimerCallback;
 import com.stackoverflow.DeviceConfig;
 
 import java.awt.AWTException;
@@ -11,6 +8,7 @@ import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.MouseInfo;
 import java.awt.Robot;
+import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.Function;
@@ -39,6 +37,7 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Menu;
@@ -58,6 +57,497 @@ import org.lwjgl.opengl.swt.GLData;
  *
  * @author Brian_Entei */
 public class LWJGL_SWT_Demo {
+	
+	public static final InterruptedException sleep(long millis) {
+		try {
+			Thread.sleep(millis);
+			return null;
+		} catch(InterruptedException ex) {
+			Thread.currentThread().interrupt();
+			return ex;
+		}
+	}
+	
+	/** Returns a string of characters.<br>
+	 * Example: <code>lineOf('a', 5);</code> --&gt; <code>aaaaa</code>
+	 * 
+	 * @param c The character to use
+	 * @param length The number of characters
+	 * @return A string full of the given characters at the given length */
+	public static final String lineOf(char c, int length) {
+		char[] str = new char[length];
+		for(int i = 0; i < length; i++) {
+			str[i] = c;
+		}
+		return new String(str);
+	}
+	
+	/** @param decimal The decimal
+	 * @return The whole number portion of the given decimal */
+	public static final String getWholePartOf(double decimal) {
+		if(decimal != decimal) {
+			return Long.toString(Double.doubleToLongBits(decimal));
+		}
+		String d = new BigDecimal(decimal).toPlainString();
+		int indexOfDecimalPoint = d.indexOf(".");
+		if(indexOfDecimalPoint != -1) {
+			return d.substring(0, indexOfDecimalPoint);
+		}
+		return Long.toString((long) decimal);
+	}
+	
+	/** @param decimal The decimal
+	 * @return The given decimal without */
+	public static final String getDecimalPartOf(double decimal) {
+		if(decimal != decimal) {
+			return Double.toString(decimal);
+		}
+		String d = new BigDecimal(decimal).toPlainString();
+		int indexOfDecimalPoint = d.indexOf(".");
+		if(indexOfDecimalPoint == -1) {
+			d = Double.toString(decimal);
+			indexOfDecimalPoint = d.indexOf(".");
+		}
+		if(indexOfDecimalPoint != -1) {
+			return d.substring(indexOfDecimalPoint);
+		}
+		return d;
+	}
+	
+	/** @param decimal The decimal to limit
+	 * @param numOfPlaces The number of places to limit the decimal to(radix)
+	 * @param pad Whether or not the decimal should be padded with trailing
+	 *            zeros if the resulting length is less than
+	 *            <code>numOfPads</code>
+	 * @return The limited decimal */
+	public static final String limitDecimalNoRounding(double decimal, int numOfPlaces, boolean pad) {
+		if(Double.isNaN(decimal) || Double.isInfinite(decimal)) {
+			return Double.toString(decimal);
+		}
+		String padStr = pad ? lineOf('0', numOfPlaces) : "0";
+		if(Double.doubleToLongBits(decimal) == Double.doubleToLongBits(0.0)) {
+			return "0" + (numOfPlaces != 0 ? "." + padStr : "");
+		}
+		if(Double.doubleToLongBits(decimal) == Double.doubleToLongBits(-0.0)) {
+			return "-0" + (numOfPlaces != 0 ? "." + padStr : "");
+		}
+		numOfPlaces += 1;
+		String whole = Double.isFinite(decimal) ? getWholePartOf(decimal) : Double.isInfinite(decimal) ? "Infinity" : "NaN";
+		if(numOfPlaces == 0) {
+			return whole;
+		}
+		
+		if(pad) {
+			int checkWholeLength = whole.length();
+			checkWholeLength = decimal < 0 ? checkWholeLength - 1 : checkWholeLength;
+			checkWholeLength -= 2;
+			if(checkWholeLength > 0) {
+				if(padStr.length() - checkWholeLength <= 0) {
+					padStr = "";
+				} else {
+					padStr = padStr.substring(0, padStr.length() - checkWholeLength);
+				}
+			}
+			if(padStr.isEmpty()) {
+				return whole;
+			}
+		}
+		
+		String d = Double.isFinite(decimal) ? getDecimalPartOf(decimal) : "";
+		if(d.length() == 1 || d.equals(".0")) {
+			return whole + (numOfPlaces != 0 ? "." + padStr : "");
+		}
+		if(d.length() > numOfPlaces) {
+			d = d.substring(d.indexOf('.') + 1, numOfPlaces);
+		}
+		if(d.startsWith(".")) {
+			d = d.substring(1);
+		}
+		String restore = d;
+		if(d.endsWith("9")) {//Combat weird java rounding
+			int chopIndex = -1;
+			char[] array = d.toCharArray();
+			boolean lastChar9 = false;
+			for(int i = array.length - 1; i >= 0; i--) {
+				boolean _9 = array[i] == '9';
+				array[i] = _9 ? '0' : array[i];
+				chopIndex = i;
+				if(!_9 && lastChar9) {//If the current character isn't a 9 and the one after it(to the right) is, then add one to the current non-nine char and set the chop-off index, "removing" the "rounding issue"
+					array[i] = Integer.valueOf(Integer.valueOf(new String(new char[] {array[i]})).intValue() + 1).toString().charAt(0);
+					chopIndex = i + 1;
+					break;
+				}
+				lastChar9 = _9;
+			}
+			d = new String(array, 0, (chopIndex == -1 ? array.length : chopIndex));
+		}
+		if(d.endsWith("0")) {
+			while(d.endsWith("0")) {
+				d = d.substring(0, d.length() - 1);
+			}
+		}
+		if(d.isEmpty()) {
+			d = restore;
+		}
+		if(pad && (numOfPlaces - d.length()) > 0) {
+			d += lineOf('0', numOfPlaces - d.length());
+		}
+		if(d.length() > numOfPlaces - 1) {
+			d = d.substring(0, numOfPlaces - 1);
+		}
+		//System.out.println("\"" + whole + "." + d + "\"");
+		return whole + "." + d;//(d.isEmpty() ? "" : ("." + d));
+	}
+	
+	public static final boolean setLocation(Control control, Point location) {
+		if(!control.getLocation().equals(location)) {
+			control.setLocation(location);
+			return control.getLocation().equals(location);
+		}
+		return false;
+	}
+	
+	public static final boolean setLocation(Control control, int x, int y) {
+		return setLocation(control, new Point(x, y));
+	}
+	
+	public static final void centerShell2OnShell1(Shell shell1, Shell shell2) {
+		Point size1 = shell1.getSize();
+		Point loc1 = shell1.getLocation();
+		Point size2 = shell2.getSize();
+		setLocation(shell2, loc1.x + (size1.x / 2) - (size2.x / 2), loc1.y + (size1.y / 2) - (size2.y / 2));
+	}
+	
+	public static final boolean setEnabled(MenuItem control, boolean enabled) {
+		if(control.isEnabled() != enabled) {
+			control.setEnabled(enabled);
+			return control.isEnabled() == enabled;
+		}
+		return false;
+	}
+	
+	public static final boolean setEnabled(Control control, boolean enabled) {
+		if(control.isEnabled() != enabled) {
+			control.setEnabled(enabled);
+			return control.isEnabled() == enabled;
+		}
+		return false;
+	}
+	
+	public static final boolean setText(Label label, String string) {
+		if(!label.getText().equals(string)) {
+			label.setText(string);
+			return label.getText().equals(string);
+		}
+		return false;
+	}
+	
+	public static final boolean setSelection(MenuItem menuItem, boolean selected) {
+		if(menuItem.getSelection() != selected) {
+			menuItem.setSelection(selected);
+			return menuItem.getSelection() == selected;
+		}
+		return false;
+	}
+	
+	/** Class used to allow threads to sleep the optimal amount of milliseconds
+	 * per
+	 * frame to achieve a desired FPS / period.
+	 * 
+	 * @author Brian_Entei
+	 * @see FrequencyTimer#FrequencyTimer(double)
+	 * @see FrequencyTimer#FrequencyTimer(double, double)
+	 * @see FrequencyTimer#frequencySleep()
+	 * @see FrequencyTimer#setFrequency(double)
+	 * @see FrequencyTimer#setFrequency(double, double)
+	 * @see FrequencyTimer#getTargetFrequency()
+	 * @see FrequencyTimer#getWorkingFrequency()
+	 * @see FrequencyTimer#getTargetPeriodInMilliseconds() */
+	public static class FrequencyTimer {
+		
+		/** @param args Program command line arguments */
+		public static final void main(String[] args) {
+			double frequency = 75.0;
+			/*final double targetMPF = 1000 / frequency;
+			long sleepPerFrame = Math.round(Math.floor(targetMPF)), totalMilliseconds = 0, frameCount = 0, mpf = 0;
+			long lastSecond = System.currentTimeMillis();
+			long startTime = System.currentTimeMillis(), elapsedTime = 0, now = startTime, sleepTime = 0, additionalSleepTotal = 0;*/
+			
+			FrequencyTimer timer = new FrequencyTimer(frequency);
+			timer.setCallback(new TimerCallback() {
+				@Override
+				public void onTick() {
+				}
+				
+				@Override
+				public void onSecond() {
+					System.out.println("FPS: ".concat(Long.toString(timer.frameCount)).concat("; Target FPS: ").concat(Double.toString(timer.originalFrequency)).concat("; MPFPS: ").concat(Long.toString(timer.totalMilliseconds)).concat("; Additional sleep this time: ").concat(Long.toString(timer.additionalSleepTotal)).concat("; Average MPF: ").concat(Double.toString((timer.totalMilliseconds + 0.0) / (timer.frameCount + 0.0))).concat("; Target MPF: ").concat(Double.toString(timer.actualTargetMPF)).concat(";"));
+				}
+			});
+			//SecureRandom busyWork = new SecureRandom();
+			while(true) {//for(long l = 0; ; l++) {
+				
+				/*if(busyWork.nextBoolean() || busyWork.nextBoolean()) {
+					for(int j = 0; j <= Math.max(busyWork.nextInt(1000000), 1); j++) {
+						busyWork.nextDouble();
+						busyWork.nextInt(Math.max(busyWork.nextInt(), 1));
+					}
+					try {
+						Thread.sleep(10);//Simulated "heavy" load
+					} catch(InterruptedException ignored) {
+						Thread.currentThread().interrupt();
+					}
+				}*/
+				
+				timer.frequencySleep();
+				//if(l > frequency * 3) {
+				//	timer.setFrequency(timer.lastFrameCount, timer.period);
+				//}
+				/*now = System.currentTimeMillis();
+				elapsedTime = now - startTime;
+				sleepTime = sleepPerFrame - elapsedTime;
+				if(sleepTime > 0) {
+					if(totalMilliseconds >= (sleepPerFrame * frequency)) {
+						double framesRemaining = Math.round(Math.ceil(frequency)) - frameCount;
+						if(framesRemaining > 0) {//1) {
+							double sleepRemaining = 1000 - totalMilliseconds;
+							long additionalSleep = Math.round(Math.ceil(sleepRemaining / framesRemaining));//At 60 FPS, this ought to be close to 10 milliseconds in the last four frames
+							//if(totalMilliseconds + sleepTime + additionalSleep <= 1000) {
+								sleepTime += additionalSleep;
+								additionalSleepTotal += additionalSleep;
+							//}
+						}
+					}
+					try {
+						Thread.sleep(sleepTime);
+					} catch(InterruptedException ignored) {
+						Thread.currentThread().interrupt();
+					}
+				}
+				frameCount++;
+				totalMilliseconds += (mpf = ((now = System.currentTimeMillis()) - startTime));
+				startTime = now;
+				if(now - lastSecond >= 1000L) {
+					System.out.println("FPS: ".concat(Long.toString(frameCount)).concat("; MPFPS: ").concat(Long.toString(totalMilliseconds)).concat("; Additional sleep this time: ").concat(Long.toString(additionalSleepTotal)).concat("; Average MPF: ").concat(Double.toString((totalMilliseconds + 0.0) / (frameCount + 0.0))));
+					lastSecond = (now = System.currentTimeMillis());
+					frameCount = 0;
+					totalMilliseconds = 0;
+					additionalSleepTotal = 0;
+					mpf = 0;
+				}*/
+			}
+			
+			//double mpfps = sleepPerFrame * frequency;
+			//System.out.println(mpfps);
+			
+		}
+		
+		/** Interface for allowing API users to listen to time-sensitive events.
+		 *
+		 * @author Brian_Entei */
+		public static interface TimerCallback {
+			
+			/** Called once per tick. */
+			public void onTick();
+			
+			/** Called once per second. */
+			public void onSecond();
+			
+		}
+		
+		protected volatile double frequency = 60.0,
+				originalFrequency = this.frequency;
+		private volatile double period = 1000.0;
+		protected volatile double targetMPF = this.period / this.frequency,
+				actualTargetMPF = this.period / this.originalFrequency;
+		protected volatile long sleepPerFrame = Math.round(this.frequency > this.period ? Math.ceil(this.targetMPF) : Math.floor(this.targetMPF)),
+				totalMilliseconds = 0, frameCount = 0, mpf = 0;
+		private volatile long lastSecond = System.currentTimeMillis();
+		protected volatile long startTime = System.currentTimeMillis(),
+				elapsedTime = 0, now = this.startTime, sleepTime = 0,
+				additionalSleepTotal = 0;
+		private volatile long lastFrameCount = 0, lastTotalMilliseconds = 0,
+				lastAdditionalSleepTotal = 0, lastMPF = 0;
+		
+		private volatile TimerCallback callback = null;
+		
+		public FrequencyTimer(double frequency, double period) {
+			this.setFrequency(frequency, period);
+		}
+		
+		public FrequencyTimer(double frequency) {
+			this(frequency, 1000.0);
+		}
+		
+		public final FrequencyTimer setFrequency(double frequency, double period) {
+			this.period = period != period || Double.isInfinite(period) ? this.period : period;
+			this.frequency = frequency != frequency || Double.isInfinite(frequency) ? this.frequency : frequency;
+			this.originalFrequency = frequency != frequency || Double.isInfinite(frequency) ? this.frequency : frequency;
+			this.actualTargetMPF = this.period / this.frequency;
+			
+			//if(this.frequency > this.period) {
+			this.frequency += frequency < period ? ((1.0 / frequency) - 1.0) : (frequency > period ? ((this.frequency / this.period) - 1.0) : 0.0);//This actually removes that strange fps variance of +/- 1 here and there for "lower" frequencies! Holy moly :D ... at least for my CPU anyway ...
+			//}
+			this.targetMPF = this.period / this.frequency;
+			this.sleepPerFrame = Math.round(this.frequency > this.period ? Math.ceil(this.targetMPF) : Math.floor(this.targetMPF));
+			return this;
+		}
+		
+		public final FrequencyTimer setFrequency(double frequency) {
+			return this.setFrequency(frequency, this.period);
+		}
+		
+		public final void frequencySleep() {
+			this.elapsedTime = (this.now = System.currentTimeMillis()) - (this.startTime + (System.currentTimeMillis() - this.now));
+			this.sleepTime = this.sleepPerFrame - this.elapsedTime;
+			if(this.sleepTime > 0) {
+				long additionalSleep = 0;
+				if(this.totalMilliseconds/* + (frequency / 10.0)*/ >= (this.sleepPerFrame * this.frequency)) {
+					double framesRemaining = Math.round(Math.ceil(this.frequency)) - this.frameCount;
+					if(framesRemaining > 0) {//1) {
+						double sleepRemaining = this.period - this.totalMilliseconds;
+						additionalSleep = Math.round(Math.ceil(sleepRemaining / framesRemaining));//At 60 FPS and 1000 ms, this ought to be close to 10 milliseconds in the last four frames
+						if(additionalSleep > 0) {//if(totalMilliseconds + sleepTime + additionalSleep <= (this.period - (frequency / 10.0))) {
+							this.sleepTime = additionalSleep;//this.sleepTime = framesRemaining == 1 ? additionalSleep : this.sleepTime + additionalSleep;//this.sleepTime += additionalSleep;
+							this.additionalSleepTotal += additionalSleep;
+						}//}
+					}
+				}
+				if(this.sleepTime > 0) {
+					double averageMPF = (this.totalMilliseconds + 0.0) / (this.frameCount + 0.0);
+					if(averageMPF > this.targetMPF) {
+						this.sleepTime -= 1;
+						if(additionalSleep > 0) {
+							additionalSleep -= 1;
+							this.additionalSleepTotal -= 1;
+						}
+					}
+				}
+				if(((this.now = System.currentTimeMillis()) - (this.lastSecond + (System.currentTimeMillis() - this.now))) + this.sleepTime > this.period) {
+					this.sleepTime = Math.round(this.period - this.totalMilliseconds);
+					this.additionalSleepTotal -= additionalSleep;
+					//this.additionalSleepTotal += this.sleepTime;
+				}
+				if(this.sleepTime > 0) {
+					try {
+						Thread.sleep(this.sleepTime);
+					} catch(InterruptedException ignored) {
+						Thread.currentThread().interrupt();
+					}
+				}
+			}
+			if(this.callback != null) {
+				try {
+					this.callback.onTick();
+				} catch(Throwable ex) {
+					ex.printStackTrace(System.err);
+					System.err.flush();
+					this.callback = null;
+				}
+			}
+			this.frameCount++;
+			this.totalMilliseconds += (this.mpf = ((this.now = System.currentTimeMillis()) - (this.startTime + (System.currentTimeMillis() - this.now))));
+			this.startTime = this.now;
+			if((this.now = System.currentTimeMillis()) - (this.lastSecond + (System.currentTimeMillis() - this.now)) >= this.period) {
+				if(this.callback != null) {
+					try {
+						this.callback.onSecond();
+					} catch(Throwable ex) {
+						ex.printStackTrace(System.err);
+						System.err.flush();
+						this.callback = null;
+					}
+				}
+				this.lastSecond = (this.now = System.currentTimeMillis());
+				this.lastFrameCount = this.frameCount;
+				this.frameCount = 0;
+				this.lastTotalMilliseconds = this.totalMilliseconds;
+				this.totalMilliseconds = 0;
+				this.lastAdditionalSleepTotal = this.additionalSleepTotal;
+				this.additionalSleepTotal = 0;
+				this.lastMPF = this.mpf;
+				this.mpf = 0;
+			}
+		}
+		
+		public TimerCallback getCallback() {
+			return this.callback;
+		}
+		
+		public FrequencyTimer setCallback(TimerCallback callback) {
+			this.callback = callback;
+			return this;
+		}
+		
+		public double getTargetFrequency() {
+			return this.originalFrequency;
+		}
+		
+		public double getWorkingFrequency() {
+			return this.frequency;
+		}
+		
+		public long getBaseTargetSleepPerFrame() {
+			return this.sleepPerFrame;
+		}
+		
+		public double getTargetSleepPerFrame() {
+			return this.targetMPF;
+		}
+		
+		public double getWorkingTargetSleepPerFrame() {
+			return this.actualTargetMPF;
+		}
+		
+		public long getLastMillisecondsPerFrame() {
+			return this.lastMPF;
+		}
+		
+		public long getCurrentMillisecondsPerFrame() {
+			return this.mpf;
+		}
+		
+		public long getLastMillisecondsPerFramePerPeriod() {
+			return this.lastTotalMilliseconds;
+		}
+		
+		public long getCurrentMillisecondsPerFramePerPeriod() {
+			return this.totalMilliseconds;
+		}
+		
+		public long getLastAdditionalSleepTotal() {
+			return this.lastAdditionalSleepTotal;
+		}
+		
+		public long getCurrentAdditionalSleepTotal() {
+			return this.additionalSleepTotal;
+		}
+		
+		public long getLastFrameCount() {
+			return this.lastFrameCount;
+		}
+		
+		public long getCurrentFrameCount() {
+			return this.frameCount;
+		}
+		
+		public double getTargetPeriodInMilliseconds() {
+			return this.period;
+		}
+		
+		public FrequencyTimer setTargetPeriodInMilliseconds(double period) {
+			return this.setFrequency(this.originalFrequency, period);
+		}
+		
+		public double getLastAverageMillisecondsPerFrame() {
+			return (this.lastTotalMilliseconds + 0.0) / (this.lastFrameCount + 0.0);
+		}
+		
+		public double getAverageMillisecondsPerFrame() {
+			return (this.totalMilliseconds + 0.0) / (this.frameCount + 0.0);
+		}
+		
+	}
 	
 	@SuppressWarnings("unused")
 	private static final SelectionListener createMenuBar(Shell shell, Function<Void, Boolean> swtLoop, Function<Boolean, Void> setFullScreen, boolean[] state, boolean[] vsync, double[] frequency, MenuItem[] verticalSyncMenuItem, MenuItem[] framerateMenuItem, MenuItem[] fullscreenMenuItem) {
@@ -120,7 +610,7 @@ public class LWJGL_SWT_Demo {
 					dialog.setText("Framerate Frequency Adjustment");
 					dialog.setSize(450, 320);
 					dialog.setImages(shell.getImages());
-					SWTUtil.centerShell2OnShell1(shell, dialog);
+					centerShell2OnShell1(shell, dialog);
 					
 					Label lblFrequency = new Label(dialog, SWT.NONE);
 					lblFrequency.setBounds(10, 22, 60, 15);
@@ -154,7 +644,7 @@ public class LWJGL_SWT_Demo {
 					
 					Label lblDisplayFrequency = new Label(dialog, SWT.CENTER);
 					lblDisplayFrequency.setToolTipText("The framerate frequency ('MPF' is \"Milliseconds Per Frame\", or the amount of time each frame spends on screen)");
-					lblDisplayFrequency.setText(fps == 0 ? "Infinity <No Limit>" : String.format("Frequency: %s FPS (%s MPF)", Integer.toString(fps), CodeUtil.limitDecimalNoRounding(mpf, 8, true)));
+					lblDisplayFrequency.setText(fps == 0 ? "Infinity <No Limit>" : String.format("Frequency: %s FPS (%s MPF)", Integer.toString(fps), limitDecimalNoRounding(mpf, 8, true)));
 					lblDisplayFrequency.setSize(215, 15);
 					lblDisplayFrequency.setLocation(sldrFrequency.getLocation().x + (sldrFrequency.getSize().x / 2) - (lblDisplayFrequency.getSize().x / 2), sldrFrequency.getLocation().y + sldrFrequency.getSize().y + 6);
 					
@@ -271,7 +761,7 @@ public class LWJGL_SWT_Demo {
 					while(state[1] && !vsync[0] && swtLoop.apply(null).booleanValue() && !dialog.isDisposed()) {
 						MenuItem mntmadjustFramerateBy = framerateMenuItem[0];
 						if(mntmadjustFramerateBy != null) {
-							SWTUtil.setEnabled(mntmadjustFramerateBy, false);
+							setEnabled(mntmadjustFramerateBy, false);
 						}
 						if(!state[1]) {
 							break;
@@ -279,7 +769,7 @@ public class LWJGL_SWT_Demo {
 						fps = sldrFrequency.getSelection();
 						frequency[0] = fps;
 						mpf = 1000.0 / (fps + 0.0);
-						SWTUtil.setText(lblDisplayFrequency, fps == 0 ? "Frequency: Infinity <No Limit>" : String.format("Frequency: %s FPS (%s MPF)", Integer.toString(fps), CodeUtil.limitDecimalNoRounding(mpf, 8, true)));
+						setText(lblDisplayFrequency, fps == 0 ? "Frequency: Infinity <No Limit>" : String.format("Frequency: %s FPS (%s MPF)", Integer.toString(fps), limitDecimalNoRounding(mpf, 8, true)));
 						
 						if((dialog.getStyle() & SWT.ON_TOP) != 0 && !shell.getFullScreen()) {
 							break;
@@ -354,7 +844,6 @@ public class LWJGL_SWT_Demo {
 		Shell shell = new Shell(display, SWT.SHELL_TRIM);
 		shell.setSize(800, 600);
 		shell.setText("LWJGL-SWT Demo");
-		shell.setImages(SWTUtil.getTitleImages());
 		shell.addShellListener(new ShellAdapter() {
 			@Override
 			public void shellClosed(ShellEvent e) {
@@ -395,7 +884,7 @@ public class LWJGL_SWT_Demo {
 		
 		final Function<Void, Boolean> swtLoop = (v) -> {
 			if(!display.readAndDispatch()) {
-				CodeUtil.sleep(10L);
+				sleep(10L);
 			}
 			String log;
 			while(state[0] && !shell.isDisposed() && (log = fpsLog.pollFirst()) != null) {
@@ -408,11 +897,11 @@ public class LWJGL_SWT_Demo {
 			}
 			MenuItem verticalSyncMenuItem = mntmVerticalSync[0];
 			if(verticalSyncMenuItem != null && !verticalSyncMenuItem.isDisposed()) {
-				SWTUtil.setSelection(verticalSyncMenuItem, vsync[0]);
+				setSelection(verticalSyncMenuItem, vsync[0]);
 			}
 			MenuItem fullscreenMenuItem = mntmFullscreen[0];
 			if(fullscreenMenuItem != null && !fullscreenMenuItem.isDisposed()) {
-				SWTUtil.setSelection(fullscreenMenuItem, shell.getFullScreen());// This will always be false (unless you don't have the program remove the menubar while in fullscreen mode)
+				setSelection(fullscreenMenuItem, shell.getFullScreen());// This will always be false (unless you don't have the program remove the menubar while in fullscreen mode)
 			}
 			if(display.getActiveShell() == shell) {
 				glCanvas.setFocus();
@@ -733,7 +1222,7 @@ public class LWJGL_SWT_Demo {
 		while(swtLoop.apply(null).booleanValue()) {
 			framerateMenuItem = mntmadjustFramerateBy[0];
 			if(framerateMenuItem != null && !framerateMenuItem.isDisposed()) {
-				SWTUtil.setEnabled(framerateMenuItem, !vsync[0]);
+				setEnabled(framerateMenuItem, !vsync[0]);
 			}
 			
 		}
@@ -741,7 +1230,7 @@ public class LWJGL_SWT_Demo {
 		//Wait for the GLThread to shut down and clean up:
 		while(glThread.isAlive()) {
 			state[0] = false;
-			CodeUtil.sleep(10L);
+			sleep(10L);
 		}
 		
 		//The program is shutting down, let's clean up:
